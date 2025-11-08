@@ -1,8 +1,11 @@
+import 'package:financing_app/screens/auth/pages/login_page.dart';
+import 'package:provider/provider.dart';
 import 'package:financing_app/models/reminder.dart';
 import 'package:financing_app/services/reminder_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:financing_app/services/weather_service.dart';
+import 'package:financing_app/services/auth_service.dart';
 
 class RemindersPage extends StatefulWidget {
   const RemindersPage({super.key});
@@ -33,6 +36,7 @@ class _RemindersPageState extends State<RemindersPage> {
   }
 
   showDialog(
+    
     context: context,
     builder: (_) => AlertDialog(
       title: Text(reminder != null ? 'Editar Lembrete' : 'Novo Lembrete'),
@@ -72,14 +76,14 @@ class _RemindersPageState extends State<RemindersPage> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancelar'), 
+          child: const Text('Voltar'), 
         ),
         ElevatedButton(
           onPressed: () async {
             if (!_formKey.currentState!.validate() || _selectedDate == null) return;
 
-            // Chamada para a WeatherAPI - aqui acontece a integração automática!
-            String cidade = "São Paulo"; // ou use um campo do usuário
+            // Chama a WeatherAPI
+            String cidade = "Guarapuava";
             String clima = await WeatherService().getWeatherDescription(
               city: cidade,
               date: _selectedDate!,
@@ -89,7 +93,7 @@ class _RemindersPageState extends State<RemindersPage> {
               id: reminder?.id ?? '', // Firestore irá gerar id se vazio
               title: _titleController.text.trim(),
               description: _descriptionController.text.trim(),
-              weather: clima, // agora preenchido automaticamente!
+              weather: clima, 
               date: _selectedDate!,
             );
 
@@ -111,11 +115,23 @@ class _RemindersPageState extends State<RemindersPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Lembretes'),
-        centerTitle: true,
-        backgroundColor: Colors.blue,
-      ),
+        appBar: AppBar(
+          title: const Text('Lembretes'),
+          centerTitle: true,
+          backgroundColor: Colors.blue,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.logout),
+              tooltip: 'Logout',
+              onPressed: () async {
+                await context.read<AuthService>().signOut();
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (context) => const LoginPage()),
+                );
+              },
+            ),
+          ],
+        ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showReminderDialog(),
         child: const Icon(Icons.add),

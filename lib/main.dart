@@ -21,7 +21,7 @@ class MyApp extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (context) => AuthService(),
       child: MaterialApp(
-        title: 'Finance App',
+        title: 'Reminder App',
         theme: ThemeData(primarySwatch: Colors.blue),
         initialRoute: AppRoutes.login,
         routes: AppRoutes.routes,
