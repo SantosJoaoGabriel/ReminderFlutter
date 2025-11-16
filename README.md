@@ -1,5 +1,5 @@
-## Reminder App
-O Reminder App é uma aplicação para controle de lembretes pessoais com autenticação de usuário, registro de novos lembretes e consulta automática de previsão do tempo para a data do lembrete. O projeto utiliza Flutter para o front-end mobile/web e permite cadastro, login, remoção e edição de lembretes, apresentando interface moderna, rápida e responsiva.
+## Lembretes App
+Este App é uma aplicação para controle de lembretes pessoais com autenticação de usuário, registro de novos lembretes e consulta automática de previsão do tempo para a data do lembrete. O projeto utiliza Flutter para o front-end mobile/web e permite cadastro, login, remoção e edição de lembretes, apresentando interface moderna, rápida e responsiva.
 
 ## Tecnologias Utilizadas
 - Flutter (UI mobile/web)
