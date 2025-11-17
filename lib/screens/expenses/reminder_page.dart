@@ -37,82 +37,84 @@ class _RemindersPageState extends State<RemindersPage> {
 
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: Text(reminder != null ? 'Editar Lembrete' : 'Novo Lembrete'),
-        content: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: _titleController,
-                decoration: const InputDecoration(labelText: 'Título'),
-                validator: (v) => v != null && v.isNotEmpty ? null : 'Informe o título',
-              ),
-              TextFormField(
-                controller: _descriptionController,
-                decoration: const InputDecoration(labelText: 'Descrição'),
-                validator: (v) => v != null && v.isNotEmpty ? null : 'Informe a descrição',
-              ),
-              ListTile(
-                title: Text(_selectedDate == null
-                  ? 'Escolha a data'
-                  : DateFormat('dd/MM/yyyy').format(_selectedDate!)),
-                trailing: const Icon(Icons.calendar_today),
-                onTap: () async {
-                  var picked = await showDatePicker(
-                    context: context,
-                    initialDate: _selectedDate ?? DateTime.now(),
-                    firstDate: DateTime(2020),
-                    lastDate: DateTime(2100),
+      builder: (_) => StatefulBuilder(
+        builder: (context, setStateDialog) => AlertDialog(
+          title: Text(reminder != null ? 'Editar Lembrete' : 'Novo Lembrete'),
+          content: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: _titleController,
+                  decoration: const InputDecoration(labelText: 'Título'),
+                  validator: (v) => v != null && v.isNotEmpty ? null : 'Informe o título',
+                ),
+                TextFormField(
+                  controller: _descriptionController,
+                  decoration: const InputDecoration(labelText: 'Descrição'),
+                  validator: (v) => v != null && v.isNotEmpty ? null : 'Informe a descrição',
+                ),
+                ListTile(
+                  title: Text(_selectedDate == null
+                    ? 'Escolha a data'
+                    : DateFormat('dd/MM/yyyy').format(_selectedDate!)),
+                  trailing: const Icon(Icons.calendar_today),
+                  onTap: () async {
+                    var picked = await showDatePicker(
+                      context: context,
+                      initialDate: _selectedDate ?? DateTime.now(),
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime(2100),
+                    );
+                    if (picked != null) setStateDialog(() => _selectedDate = picked);
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Voltar'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (!_formKey.currentState!.validate() || _selectedDate == null) return;
+                try {
+                  String cidade = "Guarapuava";
+                  String clima = await WeatherService().getWeatherDescription(
+                    city: cidade,
+                    date: _selectedDate!,
                   );
-                  if (picked != null) setState(() => _selectedDate = picked);
-                },
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Voltar'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (!_formKey.currentState!.validate() || _selectedDate == null) return;
-              try {
-                String cidade = "Guarapuava";
-                String clima = await WeatherService().getWeatherDescription(
-                  city: cidade,
-                  date: _selectedDate!,
-                );
 
-                final newReminder = Reminder(
-                  id: reminder?.id ?? '',
-                  title: _titleController.text.trim(),
-                  description: _descriptionController.text.trim(),
-                  weather: clima,
-                  date: _selectedDate!,
-                );
+                  final newReminder = Reminder(
+                    id: reminder?.id ?? '',
+                    title: _titleController.text.trim(),
+                    description: _descriptionController.text.trim(),
+                    weather: clima,
+                    date: _selectedDate!,
+                  );
 
-                if (reminder == null) {
-                  await _service.addReminder(newReminder);
-                } else {
-                  await _service.updateReminder(reminder.id, newReminder.copyWith(id: reminder.id));
+                  if (reminder == null) {
+                    await _service.addReminder(newReminder);
+                  } else {
+                    await _service.updateReminder(reminder.id, newReminder.copyWith(id: reminder.id));
+                  }
+
+                  Navigator.pop(context);
+                } catch (e) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Erro ao salvar lembrete: $e')),
+                  );
                 }
-
-                Navigator.pop(context);
-              } catch (e) {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Erro ao salvar lembrete: $e')),
-                );
-              }
-            },
-            child: Text(reminder != null ? 'Salvar' : 'Adicionar'),
-          )
-        ]
-      )
+              },
+              child: Text(reminder != null ? 'Salvar' : 'Adicionar'),
+            )
+          ]
+        ),
+      ),
     );
   }
 
@@ -141,7 +143,6 @@ class _RemindersPageState extends State<RemindersPage> {
             tooltip: 'Logout',
             onPressed: () async {
               await FirebaseAuth.instance.signOut();
-              // StreamProvider já redireciona via controle acima
             },
           ),
         ],
