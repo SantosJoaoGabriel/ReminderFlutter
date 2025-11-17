@@ -1,9 +1,6 @@
 import 'package:financing_app/screens/auth/pages/register_page.dart';
-import 'package:financing_app/screens/expenses/reminder_page.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../../services/auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -23,7 +20,6 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthService>();
     final size = MediaQuery.of(context).size;
     final dark = Theme.of(context).brightness == Brightness.dark;
 
@@ -76,8 +72,8 @@ class _LoginPageState extends State<LoginPage> {
                         controller: _password,
                         decoration: InputDecoration(
                           labelText: 'Senha',
-                          prefixIcon: Icon(Icons.lock),
-                          border: OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.lock),
+                          border: const OutlineInputBorder(),
                           filled: true,
                           fillColor: dark ? Colors.blueGrey[800] : Colors.grey[200],
                           suffixIcon: IconButton(
@@ -106,7 +102,7 @@ class _LoginPageState extends State<LoginPage> {
                       const SizedBox(height: 30),
                       AnimatedSwitcher(
                         duration: const Duration(milliseconds: 200),
-                        child: auth.isLoading || _isCreatingUser
+                        child: _isCreatingUser
                             ? const CircularProgressIndicator()
                             : Column(
                                 children: [
@@ -161,17 +157,28 @@ class _LoginPageState extends State<LoginPage> {
     setState(() {
       _error = null;
       _success = false;
-      _isCreatingUser = false;
+      _isCreatingUser = true;
     });
 
     try {
-      await context.read<AuthService>().signIn(_email.text.trim(), _password.text.trim());
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const RemindersPage()));
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _email.text.trim(),
+        password: _password.text.trim(),
+      );
+      // Não navegue manualmente! O StreamProvider/Provider cuida da troca de telas.
+      setState(() {
+        _isCreatingUser = false;
+      });
     } on FirebaseAuthException catch (e) {
-      setState(() => _error = _handleFirebaseError(e));
+      setState(() {
+        _error = _handleFirebaseError(e);
+        _isCreatingUser = false;
+      });
     } catch (e) {
-      setState(() => _error = 'Erro inesperado: ${e.toString()}');
+      setState(() {
+        _error = 'Erro inesperado: ${e.toString()}';
+        _isCreatingUser = false;
+      });
     }
   }
 

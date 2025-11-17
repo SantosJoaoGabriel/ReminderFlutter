@@ -5,7 +5,7 @@ import 'package:financing_app/services/reminder_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:financing_app/services/weather_service.dart';
-import 'package:financing_app/services/auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class RemindersPage extends StatefulWidget {
   const RemindersPage({super.key});
@@ -23,115 +23,129 @@ class _RemindersPageState extends State<RemindersPage> {
   final _formKey = GlobalKey<FormState>();
 
   void _showReminderDialog({Reminder? reminder}) {
-  if (reminder != null) {
-    _titleController.text = reminder.title;
-    _descriptionController.text = reminder.description;
-    _weatherController.text = reminder.weather;
-    _selectedDate = reminder.date;
-  } else {
-    _titleController.clear();
-    _descriptionController.clear();
-    _weatherController.clear();
-    _selectedDate = null;
-  }
+    if (reminder != null) {
+      _titleController.text = reminder.title;
+      _descriptionController.text = reminder.description;
+      _weatherController.text = reminder.weather;
+      _selectedDate = reminder.date;
+    } else {
+      _titleController.clear();
+      _descriptionController.clear();
+      _weatherController.clear();
+      _selectedDate = null;
+    }
 
-  showDialog(
-    
-    context: context,
-    builder: (_) => AlertDialog(
-      title: Text(reminder != null ? 'Editar Lembrete' : 'Novo Lembrete'),
-      content: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextFormField(
-              controller: _titleController,
-              decoration: const InputDecoration(labelText: 'Título'),
-              validator: (v) => v != null && v.isNotEmpty ? null : 'Informe o título',
-            ),
-            TextFormField(
-              controller: _descriptionController,
-              decoration: const InputDecoration(labelText: 'Descrição'),
-              validator: (v) => v != null && v.isNotEmpty ? null : 'Informe a descrição',
-            ),
-            ListTile(
-              title: Text(_selectedDate == null
-                ? 'Escolha a data'
-                : DateFormat('dd/MM/yyyy').format(_selectedDate!)),
-              trailing: const Icon(Icons.calendar_today),
-              onTap: () async {
-                var picked = await showDatePicker(
-                  context: context,
-                  initialDate: _selectedDate ?? DateTime.now(),
-                  firstDate: DateTime(2020),
-                  lastDate: DateTime(2100),
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(reminder != null ? 'Editar Lembrete' : 'Novo Lembrete'),
+        content: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: _titleController,
+                decoration: const InputDecoration(labelText: 'Título'),
+                validator: (v) => v != null && v.isNotEmpty ? null : 'Informe o título',
+              ),
+              TextFormField(
+                controller: _descriptionController,
+                decoration: const InputDecoration(labelText: 'Descrição'),
+                validator: (v) => v != null && v.isNotEmpty ? null : 'Informe a descrição',
+              ),
+              ListTile(
+                title: Text(_selectedDate == null
+                  ? 'Escolha a data'
+                  : DateFormat('dd/MM/yyyy').format(_selectedDate!)),
+                trailing: const Icon(Icons.calendar_today),
+                onTap: () async {
+                  var picked = await showDatePicker(
+                    context: context,
+                    initialDate: _selectedDate ?? DateTime.now(),
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime(2100),
+                  );
+                  if (picked != null) setState(() => _selectedDate = picked);
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Voltar'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (!_formKey.currentState!.validate() || _selectedDate == null) return;
+              try {
+                String cidade = "Guarapuava";
+                String clima = await WeatherService().getWeatherDescription(
+                  city: cidade,
+                  date: _selectedDate!,
                 );
-                if (picked != null) setState(() => _selectedDate = picked);
-              },
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Voltar'), 
-        ),
-        ElevatedButton(
-          onPressed: () async {
-            if (!_formKey.currentState!.validate() || _selectedDate == null) return;
 
-            // Chama a WeatherAPI
-            String cidade = "Guarapuava";
-            String clima = await WeatherService().getWeatherDescription(
-              city: cidade,
-              date: _selectedDate!,
-            );
+                final newReminder = Reminder(
+                  id: reminder?.id ?? '',
+                  title: _titleController.text.trim(),
+                  description: _descriptionController.text.trim(),
+                  weather: clima,
+                  date: _selectedDate!,
+                );
 
-            final newReminder = Reminder(
-              id: reminder?.id ?? '', // Firestore irá gerar id se vazio
-              title: _titleController.text.trim(),
-              description: _descriptionController.text.trim(),
-              weather: clima, 
-              date: _selectedDate!,
-            );
+                if (reminder == null) {
+                  await _service.addReminder(newReminder);
+                } else {
+                  await _service.updateReminder(reminder.id, newReminder.copyWith(id: reminder.id));
+                }
 
-            if (reminder == null) {
-              await _service.addReminder(newReminder);
-            } else {
-              await _service.updateReminder(reminder.id, newReminder.copyWith(id: reminder.id));
-            }
-
-            Navigator.pop(context);
-          },
-          child: Text(reminder != null ? 'Salvar' : 'Adicionar'),
-        )
-      ]
-    )
-  );
-}
+                Navigator.pop(context);
+              } catch (e) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Erro ao salvar lembrete: $e')),
+                );
+              }
+            },
+            child: Text(reminder != null ? 'Salvar' : 'Adicionar'),
+          )
+        ]
+      )
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final user = Provider.of<User?>(context);
+
+    if (user == null) {
+      Future.microtask(() {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginPage()),
+          (route) => false,
+        );
+      });
+      return const SizedBox.shrink();
+    }
+
     return Scaffold(
-        appBar: AppBar(
-          title: const Text('Lembretes'),
-          centerTitle: true,
-          backgroundColor: Colors.blue,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.logout),
-              tooltip: 'Logout',
-              onPressed: () async {
-                await context.read<AuthService>().signOut();
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (context) => const LoginPage()),
-                );
-              },
-            ),
-          ],
-        ),
+      appBar: AppBar(
+        title: const Text('Lembretes'),
+        centerTitle: true,
+        backgroundColor: Colors.blue,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Logout',
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
+              // StreamProvider já redireciona via controle acima
+            },
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showReminderDialog(),
         child: const Icon(Icons.add),
